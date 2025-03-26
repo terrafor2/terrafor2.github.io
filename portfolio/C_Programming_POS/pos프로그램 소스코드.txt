@@ -1,0 +1,476 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <stdbool.h>
+
+struct Product
+{
+    char name[50];  // 제품명
+    char mf[50];    // 제조사
+    char exp[50];   // 유통기한
+    int price;       // 가격
+    int adult;      // 성인여부
+    int count;       // 재고
+};
+
+struct Product products[300];  // 최대 제품 수
+int product_count = 10;         // 제품들의 번호
+
+int balance = 1234000;         // 잔고
+char id[20] = {0,};            // 로그인 아이디
+char pw[20] = {0,};                    // 로그인 비밀번호
+time_t current_time;           // 현재시간 기록
+struct tm *tm_info;
+int starttime = 0;             // 근무시작 시간
+
+void product_input();          // 제품 입력
+void product_count_display();  // 제품 재고 출력
+void check_out();              // 계산 메뉴
+void inventory_arrival();	   // 입고
+void search();                 // 제품 검색
+void end();                    // 근무 종료
+void default_products();		// 디폴트 물건
+void fgetstr(char* str, int size); // 문자열 입력 함수 (fgetc 사용)
+
+int main()
+{
+    // ID 입력 받기
+    fputs("ID : ", stdout);
+	scanf("%s", id);	
+    // 비밀번호 입력 받기
+    fputs("PASSWORD : ", stdout);
+    scanf("%s", pw);
+
+    // 현재 시간 얻기
+    time(&current_time);
+    tm_info = localtime(&current_time);
+
+    fputs("\n사원 : KarL \n", stdout);
+    fprintf(stdout, "현재 시간: %d:%d \n", tm_info->tm_hour, tm_info->tm_min);
+    starttime = tm_info->tm_hour * 60 + tm_info->tm_min; // 출근 시간 기록
+    fprintf(stdout, "잔고 : %d원 \n\n", balance);
+
+	default_products(); // 디폴트 메뉴 셋팅
+	getchar();
+    int choose = 0;
+   
+	while (1) 
+	{
+		printf("\n\n\n1. 제품 입력 메뉴 \n");
+		printf("2. 제품 재고 확인 \n");
+		printf("3. 제품 입고 \n");
+		printf("4. 계산 메뉴 \n");
+		printf("5. 제품 검색 \n");
+		printf("6. 근무 종료 \n");
+		printf("7. 프로그램 종료 \n");
+    
+		// 유효한 숫자 입력이 들어올 때까지 반복
+		int result = 0;
+		do {
+			printf("선택: ");
+			result = scanf("%d", &choose);
+
+			if (result != 1) 
+			{  // 숫자가 아닌 값이 입력된 경우
+				printf("잘못된 입력입니다. 숫자를 입력하세요!\n");
+			}
+			while (getchar() != '\n'); // 입력 버퍼 비우기
+		} while (result != 1);
+
+		if (choose == 7) 
+		{
+			break;  // 7 선택 시 프로그램 종료
+		}
+
+		if (choose < 1 || choose > 7) 
+		{
+			printf("올바른 메뉴 번호(1~7)를 입력하세요!\n");
+			continue;
+		}
+
+		switch (choose) {
+			case 1:
+				product_input();
+				break;
+			case 2:
+				product_count_display();
+				break;
+			case 3:
+				inventory_arrival(); 
+				break;
+			case 4:
+				check_out();
+				break;
+			case 5:
+				search();
+				break;
+			case 6:
+				end();
+				break;
+			default:
+				printf("잘못된 선택입니다.\n");
+				break;
+		}
+	}
+	return 0;
+}
+
+void product_input()
+{
+    fputs("제품명: ", stdout);
+    fgetstr(products[product_count].name, sizeof(products[product_count].name));
+    
+    fputs("제조회사: ", stdout);
+    fgetstr(products[product_count].mf, sizeof(products[product_count].mf));
+
+    fputs("유통기한: ", stdout);
+    fgetstr(products[product_count].exp, sizeof(products[product_count].exp));
+
+    fputs("성인여부(0: 아니오, 1: 예): ", stdout);
+    while (scanf("%d", &products[product_count].adult) != 1) {
+        // 입력 오류 처리
+        printf("잘못된 입력입니다. 성인여부(0: 아니오, 1: 예): ");
+        while(getchar() != '\n');  // 잘못된 입력이 있을 경우 버퍼를 비움
+    }
+	while(getchar() != '\n'); 
+    
+    fputs("가격: ", stdout);
+    while (scanf("%d", &products[product_count].price) != 1) {
+        // 입력 오류 처리
+        printf("잘못된 입력입니다. 가격: ");
+        while(getchar() != '\n');  // 잘못된 입력이 있을 경우 버퍼를 비움
+    }
+
+    fputs("갯수: ", stdout);
+    while (scanf("%d", &products[product_count].count) != 1) {
+        // 입력 오류 처리
+        printf("잘못된 입력입니다. 갯수: ");
+        while(getchar() != '\n');  // 잘못된 입력이 있을 경우 버퍼를 비움
+    }
+
+    product_count++;  // 제품 저장 배열위치 증가
+}
+
+void product_count_display()
+{
+    fputs("\n제품 재고 \n", stdout);
+    for (int i = 0; i < product_count; ++i)
+    {   
+		printf("%s : ", products[i].name);
+		for(int j = 0; j < products[i].count; ++j)
+		{
+			fputs("*", stdout);
+		}
+        printf(" (%d개) \n", products[i].count);
+    }
+}
+
+void check_out()
+{
+    int num = 0; // 카드 또는 현금 선택
+    int cash = 0;  // 지불할 현금
+    int change = 0; // 잔돈
+    int selected_product = 0; // 구매상품 번호입력
+    int selected_quantity = 0; // 선택한 제품의 수량
+    int total_price = 0; // 총 가격
+    int purchased_products[100] = {0}; // 각 제품의 구매 수량을 저장
+
+    fputs("\n상품 목록\n", stdout);
+    for (int i = 0; i < product_count; ++i)
+    {
+        fprintf(stdout, "%d. %s : %d원 | %d개 \n", i + 1, products[i].name, products[i].price, products[i].count);
+    }
+
+    while (1)
+    {
+        fputs("구매할 상품 번호를 선택하세요 (0을 입력하면 종료): ", stdout);
+        if (scanf("%d", &selected_product) < 1 || selected_product < 0 || selected_product >= product_count) 
+        {
+            fputs("잘못된 상품 번호입니다.\n", stdout);
+            return;
+        }
+
+        if (selected_product == 0)
+        {
+            break;  // 0을 입력하면 상품 선택을 종료
+        }
+
+        selected_product -= 1;  // 상품 번호는 1부터 시작하므로 1을 뺌
+
+        if (products[selected_product].count <= 0)
+        {
+            fputs("선택한 상품의 재고가 부족합니다.\n", stdout);
+            continue;
+        }
+
+        fputs("구매할 수량을 입력하세요: ", stdout);
+        if (scanf("%d", &selected_quantity) != 1 || selected_quantity <= 0)
+        {
+            fputs("잘못된 수량입니다.\n", stdout);
+            continue;
+        }
+
+        if (selected_quantity > products[selected_product].count)
+        {
+            fputs("구매할 수량이 재고보다 많습니다.\n", stdout);
+            continue;
+        }
+
+        // 총 가격 계산
+        total_price += products[selected_product].price * selected_quantity;
+        purchased_products[selected_product] += selected_quantity;  // 해당 상품의 구매 수량 누적
+
+        // 재고 차감
+        products[selected_product].count -= selected_quantity;
+
+        fputs("상품을 추가로 구매하시겠습니까? (1: 예, 2: 아니오): ", stdout);
+        if (scanf("%d", &num) != 1 || (num != 1 && num != 2)) 
+        {
+            fputs("잘못된 입력입니다. 종료합니다.\n", stdout);
+            break;
+        }
+        
+        if (num == 2)
+        {
+            break;  // 아니오를 선택하면 구매 종료
+        }
+    }
+
+    // 결제 처리
+    fputs("결제 방법을 선택해주세요 (1: 카드, 2: 현금): ", stdout);
+    if (scanf("%d", &num) != 1 || (num != 1 && num != 2)) 
+    {
+        fputs("잘못된 입력입니다. 결제를 취소합니다.\n", stdout);
+        return;
+    }
+
+    if (num == 2)  // 현금 결제
+    {
+        fputs("현금 얼마를 지불하십니까? ", stdout);
+        if (scanf("%d", &cash) != 1 || cash < total_price) 
+        {
+            fputs("입력된 현금이 부족하거나 잘못된 금액입니다.\n", stdout);
+            return;
+        }
+        change = cash - total_price;
+        fprintf(stdout, "잔돈은 %d원입니다.\n", change);
+        balance += total_price;  // 잔고에 반영
+    }
+    else if (num == 1)  // 카드 결제
+    {
+        fputs("카드 결제입니다.\n", stdout);
+        balance += total_price;
+    }
+
+	printf("총 결제 금액은 %d원입니다.\n", total_price);
+	printf("잔고 : %d원 \n", balance);
+	fputs("구매가 완료되었습니다.\n", stdout);
+	return;
+}
+
+
+void inventory_arrival()
+{
+    char search_name[50];
+    int num = 0;
+    bool found = false;  // 제품을 찾았는지 여부
+    int selected_index = -1;  // 선택된 제품 인덱스를 추적하기 위한 변수
+
+    fputs("입고된 상품 이름을 입력 하세요 : ", stdout);
+    fgetstr(search_name, sizeof(search_name));
+    
+    for (int i = 0; i < product_count; ++i)
+    {
+        if (strstr(products[i].name, search_name) != NULL)
+        {
+            // 제품이 일치하면 출력
+			printf("번호 %d \n", i+1);
+            printf("1. 제품명: %s\n", products[i].name);
+            printf("2. 제조회사: %s\n", products[i].mf);
+            printf("3. 유통기한: %s\n", products[i].exp);
+            printf("4. 성인여부: %d\n", products[i].adult);
+            printf("5. 가격: %d\n", products[i].price);
+            printf("6. 갯수: %d\n", products[i].count);
+            fputs("7. 취소\n", stdout);
+            found = true;  // 제품을 찾았음
+        }
+    }
+    
+    if (found == false)
+    {
+        fputs("제품을 찾지 못하였습니다.\n", stdout);  // 제품을 찾지 못한 경우 메시지 출력
+		fputs("새 제품 입력 \n", stdout);
+		product_input();   
+		return; 
+	}
+
+    // 사용자가 수정할 제품 번호를 선택
+    fputs("수정할 제품 번호를 선택하세요: ", stdout);
+	if (scanf("%d", &selected_index) != 1 || selected_index < 1 || selected_index > product_count) 
+	{
+		fputs("잘못된 제품 번호입니다. 취소합니다.\n", stdout);
+		return;
+	}
+	selected_index--;  // 사용자가 입력한 번호는 1부터 시작하므로 0부터 시작하도록 변환
+
+    // 수정 작업 시작
+    while (num != 7)
+    {
+        fputs("수정할 항목을 선택 해주세요: ", stdout);
+        scanf("%d", &num);  // 항목 선택
+        switch (num)
+        {
+            case 1:
+				getchar();
+                fputs("수정할 제품명을 입력하세요: ", stdout);
+                fgetstr(products[selected_index].name, sizeof(products[selected_index].name));
+                break;
+            case 2:
+				getchar();
+                fputs("수정할 제조회사를 입력하세요: ", stdout);
+                fgetstr(products[selected_index].mf, sizeof(products[selected_index].mf));
+                break;
+            case 3:
+				getchar();
+                fputs("수정할 유통기한을 입력하세요: ", stdout);
+                fgetstr(products[selected_index].exp, sizeof(products[selected_index].exp));
+                break;
+            case 4:
+                fputs("성인여부를 수정하세요 (0: 아니오, 1: 예): ", stdout);
+                scanf("%d", &products[selected_index].adult);
+                break;
+            case 5:
+                fputs("수정할 가격을 입력하세요: ", stdout);
+                scanf("%d", &products[selected_index].price);
+                break;
+            case 6:
+                fputs("수정할 갯수를 입력하세요: ", stdout);
+                scanf("%d", &products[selected_index].count);
+                break;
+            case 7:
+                fputs("취소되었습니다.\n", stdout);
+                break;
+            default:
+                fputs("잘못된 선택입니다. 다시 시도해주세요.\n", stdout);
+        }
+    }
+}
+
+void search()
+{
+	getchar();
+    char search_name[200];
+	bool found = false;
+    fputs("검색할 제품명: ", stdout);
+    fgetstr(search_name, sizeof(search_name));
+
+    fputs("검색 결과: ", stdout);
+    for (int i = 0; i < product_count; ++i)
+    {
+        if (strstr(products[i].name, search_name) != NULL)
+        {
+            printf("%s | %d원 | %d개\n", products[i].name, products[i].price, products[i].count);
+			found = true;
+        }
+    }
+	if(found == false)
+	{
+		fputs("검색 결과 없음\n", stdout);
+	}
+}
+
+void end()
+{
+    time(&current_time);
+    tm_info = localtime(&current_time);
+
+    int endtime = tm_info->tm_hour * 60 + tm_info->tm_min; // 퇴근 시간
+    int work_duration = endtime - starttime; // 근무 시간
+    fprintf(stdout, "오늘 일당: %d원 (근무 시간: %d분)\n", work_duration * 9200, work_duration);
+}
+
+void fgetstr(char* str, int size)
+{
+    // fgets로 문자열 입력 받기
+    fgets(str, size, stdin);
+
+    // fgets에서 개행 문자가 들어오면 처리
+    size_t len = strlen(str);
+    if (len > 0 && str[len - 1] == '\n') {
+        str[len - 1] = '\0';  // 개행 문자를 제거하고 문자열 종료 문자를 추가
+    }
+}
+
+void default_products() 
+{
+    strcpy(products[0].name, "담배");
+    strcpy(products[0].mf, "yung");
+    strcpy(products[0].exp, "2025-12-31");
+    products[0].price = 7000;
+    products[0].adult = 1;
+    products[0].count = 10;
+
+	strcpy(products[1].name, "사탕");
+    strcpy(products[1].mf, "koko");
+    strcpy(products[1].exp, "2025-12-31");
+    products[1].price = 500;
+    products[1].adult = 0;
+    products[1].count = 30;   
+
+	strcpy(products[2].name, "포카칩");
+    strcpy(products[2].mf, "karubee");
+    strcpy(products[2].exp, "2025-12-31");
+    products[2].price = 1500;
+    products[2].adult = 0;
+    products[2].count = 10;  
+
+   	strcpy(products[3].name, "콜라");
+    strcpy(products[3].mf, "lotte");
+    strcpy(products[3].exp, "2025-12-31");
+    products[3].price = 1000;
+    products[3].adult = 0;
+    products[3].count = 20; 
+
+	strcpy(products[4].name, "사만코");
+    strcpy(products[4].mf, "롯데");
+    strcpy(products[4].exp, "2025-12-31");
+    products[4].price = 1000;
+    products[4].adult = 0;
+    products[4].count = 10;  
+
+	strcpy(products[5].name, "너구리");
+    strcpy(products[5].mf, "농심");
+    strcpy(products[5].exp, "2025-12-31");
+    products[5].price = 1300;
+    products[5].adult = 0;
+    products[5].count = 5;   
+
+	strcpy(products[6].name, "빵");
+    strcpy(products[6].mf, "samlip");
+    strcpy(products[6].exp, "2025-12-31");
+    products[6].price = 1400;
+    products[6].adult = 0;
+    products[6].count = 8;   
+
+    strcpy(products[7].name, "소주");
+    strcpy(products[7].mf, "진로");
+    strcpy(products[7].exp, "2025-12-31");
+    products[7].price = 2000;
+    products[7].adult = 1;
+    products[7].count = 10;   
+
+	strcpy(products[8].name, "초콜릿");
+    strcpy(products[8].mf, "롯데");
+    strcpy(products[8].exp, "2025-12-31");
+    products[8].price = 1000;
+    products[8].adult = 0;
+    products[8].count = 10;
+
+	strcpy(products[9].name, "휴지");
+    strcpy(products[9].mf, "pulpe");
+    strcpy(products[9].exp, "2025-12-31");
+    products[9].price = 10000;
+    products[9].adult = 0;
+    products[9].count = 3;
+}
