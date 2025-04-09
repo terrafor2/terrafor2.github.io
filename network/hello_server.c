@@ -4,12 +4,14 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-void error_hanling(char *message);
+void error_handling(char *message);
 
 int main(int argc, char *argv[])
 {
 	int serv_sock;
 	int clnt_sock;
+	const char* ip = "127.0.0.1";
+	const char* prot = "8080";
 
 	struct sockaddr_in serv_addr;
 	struct sockaddr_in clnt_addr;
